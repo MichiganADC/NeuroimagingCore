@@ -1,0 +1,96 @@
+#!/bin/bash
+
+#-----------------------------------------------------------------------
+#------ Begin preamble:  Contains directives for the Slurm scheduler
+
+#------ The job name
+#SBATCH --job-name MY_JOB_NAME
+
+#------ The following three lines ask for one node to run with 4 cores
+#SBATCH --nodes=1
+#SBATCH --tasks-per-node=1
+#SBATCH --cpus-per-task=4
+
+#------ The whole job should have access to 10 GB memory
+#SBATCH --mem=10g
+
+#------ Slurm should cancel it if it exceeds 4 hours running time
+#SBATCH --time=3:00:00
+
+#------ The 'mishruti99' account will pay for it
+#SBATCH --account=mishruti99
+
+#------ You want 'standard' compute nodes
+#SBATCH --partition=standard
+
+#------ E-mail notifications for job start/end/error
+#SBATCH --mail-user=texell@med.umich.edu
+#SBATCH --mail-type=BEGIN,END
+
+#------ Redirect log and error files
+#SBATCH --error=MY_JOB_NAME.err
+#SBATCH --output=MY_JOB_NAME.out
+
+#------ End  preamble
+#-----------------------------------------------------------------------
+
+#------ Load modules for needed software here
+module load fsl
+module load singularity
+
+my_job_header
+export SUBJECT=MY_JOB_NAME
+
+# Store initial directory, then proceed to data location
+startDir=$(pwd)
+dataDir="/nfs/turbo/umms-mishruti/Shruti_UMMAP_Data"
+cd "${dataDir}"
+pwd
+
+# Construct and run b0 reverse phase encoding copy commands 
+bvalArgs="rpe_b0.bval ${SUBJECT}"
+bvecArgs="rpe_b0.bvec ${SUBJECT}"
+
+echo cp ${bvalArgs}
+cp ${bvalArgs}
+
+echo cp ${bvecArgs}
+cp ${bvecArgs}
+
+# Get reverse phase encoded image, series 6
+cd "${SUBJECT}"
+pwd
+oldRpe="*_6.nii"
+echo ${oldRpe}
+
+# Run fslroi to truncate reverse phase encoded image down to b0 
+echo fslroi ${oldRpe} rpe_b0.nii 0 4
+fslroi ${oldRpe} rpe_b0.nii 0 4
+
+# Create output folder and assign variables for designer processing 
+subjDir=$(pwd)
+echo ${subjDir}
+outDir="${subjDir}/dwi_designer_processing"
+echo mkdir ${outDir}
+mkdir ${outDir}
+
+dwiIn="${subjDir}/"*_5.nii
+echo ${dwiIn}
+
+dwiOut="/mnt/dwi_designer.nii"
+echo ${dwiOut}
+
+pa="${subjDir}/rpe_b0.nii.gz"
+echo ${pa}
+
+cd "${startDir}"
+
+# Construct and run the designer command
+designerArgs="run --bind ${outDir}:/mnt designer2_v2.0.10.sif designer -denoise -shrinkage frob -adaptive_patch -rician -degibbs -pf 1 -eddy -rpe_pair $pa -normalize -mask -scratch /mnt/designer_scratch -nocleanup $dwiIn $dwiOut"
+echo singularity ${designerArgs}
+singularity ${designerArgs}
+
+# Construct and run the tmi command
+tmiArgs="run --bind ${outDir}:/mnt designer2_v2.0.10.sif tmi -DTI -DKI -SMI -sigma /mnt/designer_scratch/sigma.nii -compartments EAS,IAS -mask /mnt/designer_scratch/brain_mask.nii -scratch /mnt/tmi_scratch -nocleanup /mnt/dwi_designer.nii /mnt"
+echo singularity ${tmiArgs}
+singularity ${tmiArgs}

@@ -1,0 +1,59 @@
+#!/bin/bash
+
+#-----------------------------------------------------------------------
+#------ Begin preamble:  Contains directives for the Slurm scheduler
+
+#------ The job name
+#SBATCH --job-name MY_JOB_NAME
+
+#------ The following three lines ask for one node to run with 4 cores
+#SBATCH --nodes=1
+#SBATCH --tasks-per-node=1
+#SBATCH --cpus-per-task=4
+
+#------ The whole job should have access to 180 GB memory
+#SBATCH --mem=32g
+
+#------ Slurm should cancel it if it exceeds 4 hours of run time
+#SBATCH --time=8:00:00
+
+#------ The 'mishruti99' account will pay for it
+#SBATCH --account=mishruti99
+
+#------ You want 'standard' compute nodes
+#SBATCH --partition=standard
+
+#------ E-mail notifications for job start/end/error
+#SBATCH --mail-user=texell@med.umich.edu
+#SBATCH --mail-type=BEGIN,END
+
+#------ Redirect log and error files
+#SBATCH --error=logs/MY_JOB_NAME.err
+#SBATCH --output=logs/MY_JOB_NAME.out
+
+#------ End  preamble
+#-----------------------------------------------------------------------
+
+#------ Load modules for needed software here
+module load afni
+module load ANTs
+module load matlab
+module load freesurfer/7.4.1
+module load fsl/6.0.1
+module load singularity
+
+#------ Print information about the job to the output file for debugging
+my_job_header
+export SUBJECT=MY_JOB_NAME
+
+# Limit threads
+export OMP_NUM_THREADS=4
+export MKL_NUM_THREADS=4
+export MKL_DOMAIN_NUM_THREADS=4
+
+# Navigate to container directory
+containerDir="/nfs/turbo/umms-mishruti/NOS_WMH_Containers" 
+cd ${containerDir}
+echo "Subject Directory: $containerDir" 
+
+./NOS_WMHsegment.sh -inT1 /nfs/turbo/umms-mishruti/Shruti_UMMAP_Data/hlp17umm00734_07684/lst_input/T1.nii.gz -inFLAIR /nfs/turbo/umms-mishruti/Shruti_UMMAP_Data/hlp17umm00734_07684/lst_input/FLAIR.nii.gz -outFolder /nfs/turbo/umms-mishruti/Shruti_UMMAP_Data/hlp17umm00734_07684/lst_input/NOSTest -threads 4 -doALL
