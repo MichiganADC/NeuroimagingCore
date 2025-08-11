@@ -13,7 +13,7 @@ except:
     import dicom as dicom
 
 def check_fields(DCMFILE, OUTDIR, ABSPATH):
-    ds = dicom.read_file(DCMFILE)
+    ds = dicom.dcmread(DCMFILE)
     if ds.PatientAge != '000Y' and ds.PatientSex:
         print('Age and Sex already present: ' + ds.PatientAge
               + ' ' + ds.PatientSex)
@@ -23,7 +23,7 @@ def check_fields(DCMFILE, OUTDIR, ABSPATH):
         
     
 def update_fields(DCMFILE,PAT_SEX,PAT_AGE):
-    ds = dicom.read_file(DCMFILE)
+    ds = dicom.dcmread(DCMFILE)
     dsOut = ds
     
     dsOut.PatientSex = PAT_SEX.upper()
