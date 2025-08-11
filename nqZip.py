@@ -72,7 +72,7 @@ if os.path.isdir(INPUT):
         FILEOUT = OUTDIR + '/neuroquant_' + DCMFILE
 
         # Write the file
-        dicom.write_file(FILEOUT,dsOut)
+        dicom.dcmwrite(FILEOUT,dsOut)
         
 # Zip the folder
 print('Zipping to ' + OUTDIR)
